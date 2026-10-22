@@ -1,0 +1,23 @@
+{
+  "realm": "nexus-lms",
+  "auth-server-url": "http://localhost:8080",
+  "ssl-required": "external",
+  "resource": "nexus-lms-client",
+  "public-client": true,
+  "confidential-port": 0,
+  "vendorId": "aegismed-clinical-vvk-vendor",
+  "homeOrkUrl": "https://ork-01.tideprotocol.org",
+  "jwk": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "VnU-JY69eEzXKc4iaIdqcZXdi6hia8tN3MmLWYA6JnY",
+        "y": "3HK1kf0YGj4Fy70i4isXjlz41-tuKwcE8iF-JS3C7Pk",
+        "kid": "nexus-lms-vvk-01",
+        "alg": "ES256",
+        "use": "sig"
+      }
+    ]
+  }
+}

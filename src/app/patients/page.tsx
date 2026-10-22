@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
 import { useHospital } from '../../lib/hospitalContext';
+import { useTideCloak } from '../../lib/authContext';
 import {
   Users,
   Search,
@@ -13,10 +14,15 @@ import {
   ArrowRight,
   ShieldAlert,
   UserCheck,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 
 export default function PatientsDirectoryPage() {
   const { patients } = useHospital();
+  const { activeRole, hasClientRole, quickLogin } = useTideCloak();
+  const canReadEHR = hasClientRole('ehr:read', 'nexus-lms-client');
+  const canWriteEHR = hasClientRole('ehr:write', 'nexus-lms-client');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('TẤT_CẢ');
 
@@ -56,6 +62,50 @@ export default function PatientsDirectoryPage() {
               className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-hidden shadow-xs"
             />
           </div>
+        </div>
+
+        {/* TideCloak RBAC Access Check Banner */}
+        <div
+          className={`p-4 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            canReadEHR
+              ? 'bg-[#E8F5F2]/80 border-[#087F8C]/30 text-slate-800'
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}
+        >
+          <div className="flex items-start sm:items-center gap-2.5">
+            {canReadEHR ? (
+              <ShieldCheck className="w-4 h-4 text-[#087F8C] shrink-0 mt-0.5 sm:mt-0" />
+            ) : (
+              <Lock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 sm:mt-0" />
+            )}
+            <div>
+              <strong>TideCloak EHR Access Check:</strong>{' '}
+              {canReadEHR ? (
+                <span>
+                  Vai trò hiện tại <strong>[{activeRole}]</strong> có quyền{' '}
+                  <code>ehr:read</code>{' '}
+                  {canWriteEHR
+                    ? 'và ehr:write / prescription:propose (Toàn quyền Lâm sàng).'
+                    : '(Chỉ đọc & đối chiếu chuyên môn — không có quyền tự ý sửa bệnh án).'}
+                </span>
+              ) : (
+                <span>
+                  403 Restricted — Vai trò <strong>[{activeRole}]</strong> không có quyền{' '}
+                  <code>nexus-lms-client:ehr:read</code> đối với danh sách bệnh nhân nội trú của khoa.
+                </span>
+              )}
+            </div>
+          </div>
+
+          {!canReadEHR && (
+            <button
+              type="button"
+              onClick={() => quickLogin('doctor')}
+              className="px-3.5 py-1.5 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white font-semibold text-xs whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              Chuyển sang Vai trò Bác sĩ (ehr:read)
+            </button>
+          )}
         </div>
 
         {/* Patients Cards */}

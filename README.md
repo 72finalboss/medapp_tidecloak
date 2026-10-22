@@ -1,107 +1,99 @@
-[![Built with TideCloak](https://tide.org/badges/built-with-tidecloak.svg)](https://tide.org/tidecloak?utm_source=github&utm_medium=readme&utm_campaign=unlocked)
-
 # Next.js Customer Portal — Tide Starter Template
 
-## Project overview
+Minimal Next.js App Router project showing where Tide auth, protected routes, protected APIs, and RBAC belong.
 
-_A minimal, production-architected Next.js App Router customer portal demonstrating zero-trust authentication, DPoP-bound tokens, and server-side RBAC powered by TideCloak._
+## Quick start
 
-Built with [TideCloak](https://tide.org/tidecloak?utm_source=github&utm_medium=readme&utm_campaign=unlocked).
+```bash
+npm install
+npm run init    # starts TideCloak, creates realm, exports tidecloak.json
+npm run dev
+```
 
-### 1. Vision & originality
+`npm run init` runs `scripts/init-tidecloak.sh`. It requires Docker, curl, and jq. It:
 
-<!-- What new product, service, experience or way of working are you proposing? What makes your idea distinctive? -->
-Modern web applications frequently blur the line between client-side UX convenience and true server-side security, while relying on centralized identity providers that create single points of failure. We are proposing a standardized, zero-trust customer portal starter architecture for the Next.js App Router that ships with decentralized authentication, Identity Governance and Administration (IGA), and cryptographic proof-of-possession (DPoP) right out of the box. What makes this distinctive is its strict architectural separation between UI route gating and real server-side API verification, paired with automated one-command provisioning (`npm run init`) that spins up a fully configured TideCloak realm in seconds.
+1. Reads the `name` field from `package.json` and uses it as the realm and client name (e.g., `nextjs-customer-portal` becomes realm `nextjs-customer-portal` with client `nextjs-customer-portal-client`).
+2. Starts a TideCloak dev container, creates the realm and client, enables IGA, creates an admin user, and exports `data/tidecloak.json`.
+3. Prints an invite link — you must open it in a browser to link your admin Tide account.
 
-### 2. Trust constraint insight
+Override names via env vars if needed: `REALM_NAME=foo CLIENT_NAME=foo-client npm run init`
 
-<!-- What is difficult, risky or impossible today because trust, privacy or security gets in the way? Explain what becomes possible when that constraint is removed. -->
-Today, building a customer portal requires trusting centralized identity databases with sensitive credentials and accepting the risk of bearer token theft, session hijacking, or compromised admin accounts. Furthermore, developers often mistakenly rely on client-side route guards or edge middleware as their primary security layer. By removing the centralized trust constraint through Tide's decentralized cybersecurity fabric (a 14-of-20 threshold network) and enforcing DPoP (Demonstrating Proof-of-Possession) at the API route level, stolen tokens become useless and no single entity ever holds the keys to user identities. This makes it possible for teams to rapidly deploy high-assurance portals where identity compromise and unauthorized privilege escalation are mathematically mitigated.
+After init completes, `npm run dev` starts the app at `http://localhost:3000`.
 
-### 3. Value & impact
+## What this template includes
 
-<!-- Who would benefit, and how would their lives or work improve? Give a concrete example of why this matters. -->
-Full-stack developers, SaaS founders, and enterprise engineering teams building customer-facing B2B/B2C portals benefit immediately from this template. Instead of spending weeks stitching together OIDC providers, configuring Content Security Policies (CSP), and writing custom JWT verification logic, developers can bootstrap a breach-resistant portal in minutes. 
+- Auth provider with DPoP (`src/app/providers.tsx`)
+- Config API route for client-side SDK (`src/app/api/config/route.ts`)
+- Public home page with login/logout (`src/app/page.tsx`)
+- Protected route example (`src/app/dashboard/layout.tsx`)
+- Protected API with JWT verification (`src/app/api/customers/route.ts`)
+- Role-aware UI example (`src/app/dashboard/page.tsx`)
+- Server-side auth helpers (`src/lib/auth/`)
+- CSP and webpack config (`next.config.ts`)
+- Post-auth redirect handler (`src/app/auth/redirect/page.tsx`)
+- Silent SSO file (`public/silent-check-sso.html`)
+- TideCloak init script (`scripts/init-tidecloak.sh`)
+- Realm template (`scripts/realm.json.template`)
 
-**Concrete Example:** Consider a healthcare or fintech startup launching a portal where support staff and customers access sensitive records. If an attacker compromises a client browser extension and exfiltrates an access token, traditional portals would expose customer data via the `/api/customers` endpoint. With this template's DPoP-enforced architecture and server-side `withRole()` guards, the stolen token is rejected at the API boundary, and sensitive customer records remain completely safe.
+## What this template does NOT include
 
-### 4. Why TideCloak matters
+- A database. API routes return stub data.
+- Production deployment config. See notes below.
 
-<!-- How does your application use TideCloak, and how does that integration help enable your idea? Connect the technology to the possibility you are demonstrating. -->
-TideCloak is the core identity and access management engine powering this application. Our integration leverages TideCloak across four critical layers:
-- **Automated Realm & IGA Provisioning:** Our `scripts/init-tidecloak.sh` script interfaces directly with TideCloak to bootstrap the realm, client, Identity Governance and Administration (IGA), and admin account linkage automatically.
-- **Client-Side Auth & Silent SSO:** Uses `@tidecloak/nextjs` (`src/app/providers.tsx` and `public/silent-check-sso.html`) to manage seamless user sessions and DPoP key binding in the browser.
-- **Cryptographic API Protection:** Server-side auth helpers (`src/lib/auth/protect.ts`) verify TideCloak-issued JWTs and DPoP proofs on every request to `/api/customers`.
-- **Granular RBAC:** Role claims embedded in the verified TideCloak token drive both role-aware UI rendering (`src/app/dashboard/page.tsx`) and strict server-side authorization (`withRole()`).
+## Setup paths
 
-### 5. Prototype & storytelling
+### Generated app (default)
 
-<!-- What does your prototype demonstrate today? Describe the key interaction judges should look for. -->
-The prototype demonstrates a complete, end-to-end authentication and authorization lifecycle in a Next.js App Router application. 
+Use `npm run init`. This is the recommended path for new projects. It handles TideCloak bootstrap automatically. See Quick start above.
 
-**Key interactions judges should look for:**
-1. **Zero-Touch Bootstrap (`npm run init`):** Watch the initialization script automatically launch the `tideorg/tidecloak-dev` container, configure the realm and client based on `package.json`, enable IGA, export `data/tidecloak.json`, and generate an admin Tide account invite link.
-2. **TideCloak Login & DPoP Binding:** Navigate to `http://localhost:3000` and click **Login**. Authenticate via TideCloak and observe the post-auth redirect handler (`src/app/auth/redirect/page.tsx`) establishing a DPoP-protected session.
-3. **Role-Aware Dashboard & Protected APIs:** Visit `/dashboard` (`src/app/dashboard/page.tsx`) to see role-adaptive UI components alongside live data fetched from `/api/customers` (`src/app/api/customers/route.ts`), which actively enforces server-side JWT and role verification.
+### BYO TideCloak (advanced)
 
-| Layer | File | Security Value |
+If you already have a running TideCloak with a configured realm:
+
+1. Export adapter JSON and place it at `data/tidecloak.json`
+2. Run `npm run dev`
+
+See playbooks `start-tidecloak-dev`, `bootstrap-realm-from-template`, and `initialize-admin-and-link-account` for the manual bootstrap sequence.
+
+## Playbook sequence this template follows
+
+1. `add-auth-nextjs-fresh` — setup (provider, adapter, CSP, silent SSO)
+2. `protect-routes-nextjs` — client-side route guards (UI gating only)
+3. `protect-api-nextjs` — server-side JWT verification
+4. `verify-jwt-server-side` — complete JWT + DPoP verification
+5. `add-rbac-nextjs` — role-based access control
+
+## Version policy
+
+Versions in `package.json` were pinned when this template was last updated. Before using this template:
+
+1. Run `npm view @tidecloak/nextjs version` to check for a newer stable release. Pin the exact version. Skip any 0.99.x versions.
+2. Run `npm view next version` and `npm view react version` to check current stable framework versions. Use caret ranges.
+3. See `canon/version-policy.md` for the full policy and fallback versions.
+
+Do not use `"latest"` in package.json. Do not use `--force` or `--legacy-peer-deps` as the default install strategy.
+
+## Prerequisites
+
+- Node.js 18+
+- Docker (for `npm run init`)
+- curl and jq (for `npm run init`)
+
+## Security model
+
+| Layer | File | Security value |
 |-------|------|---------------|
 | UI gating | `src/app/dashboard/layout.tsx` | None. UX convenience only. |
 | Route guard | `src/app/dashboard/layout.tsx` | None for APIs. Redirect only. |
-| API auth | `src/app/api/customers/route.ts` | **Real.** JWT + DPoP verified server-side. |
-| RBAC | `src/lib/auth/protect.ts` (`withRole()`) | **Real.** Role checked on verified JWT. |
+| API auth | `src/app/api/customers/route.ts` | **Real.** JWT verified server-side. |
+| RBAC | `src/lib/auth/protect.ts` `withRole()` | **Real.** Role checked on verified JWT. |
 
----
+Hidden UI is not authorization. Every protected API verifies JWT server-side.
 
-## Setup
+**Note**: This template does not use Next.js `proxy.ts` for request interception. The file `src/lib/auth/protect.ts` is a Tide auth helper (`withAuth`/`withRole`) — it is application code, not the Next.js edge runtime file.
 
-### Prerequisites
+## Deployment notes
 
-- **Node.js 18+**
-- **Docker Desktop** (running)
-- **curl** and **jq** (required for the automated `npm run init` script)
-
-### Option 1: Automated Quick Start (Recommended)
-
-`npm run init` runs `scripts/init-tidecloak.sh`, which automatically starts the TideCloak Docker container, creates the realm and client from `package.json`, enables IGA, creates an admin user, and exports `data/tidecloak.json`.
-
-```bash
-# 1. Clone or unzip the repository and navigate into the project folder
-cd "nextjs-customer-portal"
-
-# 2. Install all dependencies
-npm install
-
-# 3. Start TideCloak, bootstrap the realm, and export data/tidecloak.json
-npm run init
-
-# 4. Open the printed invite link in your browser to link your admin Tide account
-
-# 5. Start the Next.js development server
-npm run dev
-```
-
-Open `http://localhost:3000` in your browser and click **Login** to authenticate with TideCloak.
-
-*(Optional: You can override the default realm and client names via environment variables: `REALM_NAME=foo CLIENT_NAME=foo-client npm run init`)*
-
-### Option 2: Manual / BYO TideCloak Setup
-
-If you prefer to start the TideCloak container manually (or on Windows without `bash`/`jq`):
-
-```bash
-# 1. Navigate into the project directory
-cd "nextjs-customer-portal"
-
-# 2. Start the TideCloak development container in Docker
-docker run -d -p 8080:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=password tideorg/tidecloak-dev:latest
-
-# 3. Open http://localhost:8080/, configure your realm/client (or import scripts/realm.json.template),
-#    and download the adapter config to data/tidecloak.json
-
-# 4. Install dependencies and start the development server
-npm install
-npm run dev
-
-# 5. Open http://localhost:3000/ and click Login with TideCloak
-```
+- **HTTPS**: `sslRequired: "external"` in realm.json allows HTTP on localhost but requires HTTPS for all non-local access.
+- **TideCloak image**: use `tideorg/tidecloak-dev:latest` — it is wired to the production Tide network (ork1, 14-of-20), though it is a development build of the server and the only one the pack supports. Note it uses an embedded H2 database, so for a production deployment ask Tide about external-database configuration. For a managed instance instead, see `playbooks/provision-tidecloak-skycloak.md`.
+- **Reverse proxy** (recommended example, not Tide-certified): Forward `Host` and `X-Forwarded-Proto` headers. Set `KC_PROXY_HEADERS=xforwarded` on the TideCloak container. DPoP `htu` verification requires the proxy to preserve the original URL as seen by the client.

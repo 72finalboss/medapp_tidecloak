@@ -32,6 +32,16 @@ interface AuthContextType {
   isMockMode: boolean;
   doken: string;
   availableUsers: Record<string, UserCredential>;
+  // TideCloak SDK-compatible RBAC & Token Claims surface (Tide MCP canon/feature-mapping)
+  hasRealmRole: (roleName: string) => boolean;
+  hasClientRole: (roleName: string, clientId?: string) => boolean;
+  checkAccess: (requiredRoles: string[], clientId?: string) => {
+    allowed: boolean;
+    reason: string;
+    matchedRoles: string[];
+  };
+  getValueFromIdToken: (claim: string) => any;
+  tokenClaims: Record<string, any> | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -301,6 +311,116 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ? `mock_vvk_dpop_${currentUser.role}_${currentUser.id.slice(0, 8)}`
     : '';
 
+  const ROLE_SCOPES_MAP: Record<string, string[]> = {
+    doctor: [
+      'ehr:read',
+      'ehr:write',
+      'prescription:propose',
+      'quorum:sign',
+      'support:reply',
+      'pii:propose',
+      'spii:request-once',
+    ],
+    pharmacist: [
+      'ehr:read',
+      'prescription:verify',
+      'quorum:sign',
+      'support:reply',
+      'pii:propose',
+      'spii:request-once',
+    ],
+    director: [
+      'ehr:read',
+      'staff:verify-evidence',
+      'quorum:sign',
+      'policy:manage',
+      'pii:propose',
+      'spii:request-once',
+    ],
+    patient: [
+      'appointment:book',
+      'support:ask',
+      'profile:read-own',
+      'pii:propose',
+      'spii:request-once',
+    ],
+    ai_auditor: ['ehr:read', 'prescription:safety-audit', 'quorum:sign'],
+  };
+
+  const tokenClaims: Record<string, any> | null =
+    authenticated && currentUser && activeRole
+      ? {
+          iss: 'http://localhost:8080/realms/nexus-lms',
+          sub: currentUser.id,
+          azp: 'nexus-lms-client',
+          preferred_username: currentUser.username,
+          name: currentUser.name,
+          email: currentUser.email,
+          vuid: `vuid_tide_${currentUser.id}`,
+          tideUserKey: `ed25519_pub_${activeRole}_${currentUser.id.slice(0, 8)}`,
+          realm_access: {
+            roles: [activeRole, '_tide_enabled', 'default-roles-nexus-lms', 'offline_access'],
+          },
+          resource_access: {
+            'nexus-lms-client': {
+              roles: [activeRole, ...(ROLE_SCOPES_MAP[activeRole] || [])],
+            },
+            ...(['doctor', 'pharmacist', 'director', 'ai_auditor'].includes(activeRole)
+              ? {
+                  'realm-management': {
+                    roles: ['tide-realm-admin'],
+                  },
+                }
+              : {}),
+          },
+          cnf: {
+            jkt: `dpop_p256_jkt_${activeRole}_${currentUser.id.slice(0, 6)}`,
+          },
+        }
+      : null;
+
+  const hasRealmRole = (roleName: string): boolean => {
+    if (!tokenClaims) return false;
+    const roles: string[] = tokenClaims.realm_access?.roles || [];
+    return roles.includes(roleName);
+  };
+
+  const hasClientRole = (roleName: string, clientId: string = 'nexus-lms-client'): boolean => {
+    if (!tokenClaims) return false;
+    const roles: string[] = tokenClaims.resource_access?.[clientId]?.roles || [];
+    return roles.includes(roleName);
+  };
+
+  const checkAccess = (requiredRoles: string[], clientId?: string) => {
+    if (!authenticated || !currentUser || !tokenClaims) {
+      return {
+        allowed: false,
+        reason: 'Chưa xác thực phiên TideCloak (401 Unauthorized).',
+        matchedRoles: [],
+      };
+    }
+    const matchedRoles = requiredRoles.filter((r) =>
+      clientId ? hasClientRole(r, clientId) : hasRealmRole(r) || hasClientRole(r)
+    );
+    if (matchedRoles.length === 0) {
+      return {
+        allowed: false,
+        reason: `Từ chối truy cập (403 Forbidden): Vai trò hiện tại [${activeRole}] thiếu quyền yêu cầu (${requiredRoles.join(' | ')}).`,
+        matchedRoles: [],
+      };
+    }
+    return {
+      allowed: true,
+      reason: `Được cấp quyền truy cập qua TideCloak RBAC (${matchedRoles.join(', ')}).`,
+      matchedRoles,
+    };
+  };
+
+  const getValueFromIdToken = (claim: string): any => {
+    if (!tokenClaims) return undefined;
+    return tokenClaims[claim];
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -320,6 +440,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isMockMode: true,
         doken,
         availableUsers: usersMap,
+        hasRealmRole,
+        hasClientRole,
+        checkAccess,
+        getValueFromIdToken,
+        tokenClaims,
       }}
     >
       {children}
@@ -333,4 +458,9 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+// Official TideCloak SDK-compatible hook alias (matches @tidecloak/nextjs surface)
+export function useTideCloak() {
+  return useAuth();
 }

@@ -69,6 +69,7 @@ export function Navbar() {
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
     { href: '/patients', label: 'Bệnh án', icon: Users },
+    { href: '/tide-security', label: 'TideCloak', icon: Sparkles },
   ];
 
   return (

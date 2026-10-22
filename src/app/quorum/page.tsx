@@ -19,8 +19,12 @@ import {
 } from 'lucide-react';
 
 export default function ClinicalQuorumPage() {
-  const { currentUser, activeRole } = useAuth();
+  const { currentUser, activeRole, hasClientRole, quickLogin } = useAuth();
   const { quorumRequests, signQuorumRequest } = useHospital();
+
+  const canSignQuorum =
+    hasClientRole('tide-realm-admin', 'realm-management') &&
+    hasClientRole('quorum:sign', 'nexus-lms-client');
 
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -71,6 +75,47 @@ export default function ClinicalQuorumPage() {
             </div>
           </div>
         </section>
+
+        {/* TideCloak RBAC Client-Role Access Check Banner (iga-admin-governance) */}
+        <div
+          className={`p-4 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            canSignQuorum
+              ? 'bg-[#E8F5F2]/70 border-[#087F8C]/30 text-slate-800'
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}
+        >
+          <div className="flex items-start sm:items-center gap-2.5">
+            {canSignQuorum ? (
+              <ShieldCheck className="w-4 h-4 text-[#087F8C] shrink-0 mt-0.5 sm:mt-0" />
+            ) : (
+              <Lock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 sm:mt-0" />
+            )}
+            <div>
+              <strong>TideCloak IGA Access Check:</strong>{' '}
+              {canSignQuorum ? (
+                <span>
+                  Đã xác thực quyền <code>hasClientRole(&apos;tide-realm-admin&apos;, &apos;realm-management&apos;)</code> và{' '}
+                  <code>quorum:sign</code> cho vai trò <strong>[{activeRole}]</strong>.
+                </span>
+              ) : (
+                <span>
+                  403 Forbidden — Vai trò hiện tại <strong>[{activeRole}]</strong> không có quyền{' '}
+                  <code>realm-management:tide-realm-admin</code> để ký duyệt Hội đồng Quorum (chỉ được phép xem).
+                </span>
+              )}
+            </div>
+          </div>
+
+          {!canSignQuorum && (
+            <button
+              type="button"
+              onClick={() => quickLogin('doctor')}
+              className="px-3.5 py-1.5 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white font-semibold text-xs whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              Chuyển sang Vai trò Bác sĩ để Ký
+            </button>
+          )}
+        </div>
 
         {/* Live Notification Feedback */}
         {notification && (
@@ -286,7 +331,12 @@ export default function ClinicalQuorumPage() {
                           </div>
                         </div>
 
-                        {alreadySignedByMe ? (
+                        {!canSignQuorum ? (
+                          <span className="text-xs font-semibold text-rose-600 flex items-center space-x-1">
+                            <Lock className="w-4 h-4" />
+                            <span>Bị chặn bởi TideCloak RBAC (Thiếu quyền tide-realm-admin)</span>
+                          </span>
+                        ) : alreadySignedByMe ? (
                           <span className="text-xs font-semibold text-slate-500 flex items-center space-x-1">
                             <CheckCircle2 className="w-4 h-4 text-[#087F8C]" />
                             <span>Vai trò [{activeRole}] đã ký (Đổi vai trò trên Navbar để ký tiếp)</span>
@@ -294,7 +344,7 @@ export default function ClinicalQuorumPage() {
                         ) : (
                           <button
                             onClick={() => handleSign(req.id)}
-                            className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white text-xs font-semibold transition"
+                            className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white text-xs font-semibold transition cursor-pointer"
                           >
                             <Fingerprint className="w-4 h-4" />
                             <span>Ký duyệt với vai trò [{activeRole}]</span>
