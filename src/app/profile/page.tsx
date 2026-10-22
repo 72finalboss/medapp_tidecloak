@@ -28,10 +28,17 @@ import {
   Calendar,
   HeartPulse,
   Building2,
+  Mail,
+  Smartphone,
+  ShieldCheck,
+  Send,
+  Copy,
+  Sparkles,
+  XCircle,
 } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { currentUser, activeRole, updateCredentialsSelfService } = useAuth();
+  const { currentUser, activeRole, updateCredentialsSelfService, availableUsers } = useAuth();
   const {
     quorumRequests,
     spiiGrants,
@@ -40,9 +47,20 @@ export default function ProfilePage() {
     requestProfileUpdate,
   } = useHospital();
 
-  // State for Self-Service Credentials (Exempt from Quorum)
+  // State for Self-Service Credentials (Exempt from Quorum, Requires OTP Verification)
   const [newUsername, setNewUsername] = useState(currentUser?.username || '');
   const [newPassword, setNewPassword] = useState('');
+  const [otpChannel, setOtpChannel] = useState<'email' | 'sms' | 'authenticator'>('email');
+  const [otpInput, setOtpInput] = useState('');
+  const [pendingOtpSession, setPendingOtpSession] = useState<{
+    code: string;
+    channel: 'email' | 'sms' | 'authenticator';
+    destination: string;
+    expiresAt: number;
+    targetUsername: string;
+    targetPassword: string;
+  } | null>(null);
+  const [otpRemainingSec, setOtpRemainingSec] = useState<number>(0);
   const [credFeedback, setCredFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // State for Profile PII Update (Requires Multi-Party Quorum)
@@ -79,8 +97,25 @@ export default function ProfilePage() {
       setPiiDob(currentUser.pii?.dateOfBirth || '');
       setPiiAddress(currentUser.pii?.address || '');
       setPiiEmergency(currentUser.pii?.emergencyContact || '');
+      setPendingOtpSession(null);
+      setOtpInput('');
     }
   }, [currentUser]);
+
+  // Countdown timer for active OTP session
+  useEffect(() => {
+    if (!pendingOtpSession) {
+      setOtpRemainingSec(0);
+      return;
+    }
+    const updateTimer = () => {
+      const diff = Math.max(0, Math.ceil((pendingOtpSession.expiresAt - Date.now()) / 1000));
+      setOtpRemainingSec(diff);
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [pendingOtpSession]);
 
   if (!currentUser) {
     return (
@@ -118,12 +153,95 @@ export default function ProfilePage() {
     (r) => r.type === 'CẬP_NHẬT_THÔNG_TIN_CÁ_NHÂN' && r.targetUserId === currentUser.username
   );
 
-  const handleSelfServiceCredentials = (e: React.FormEvent) => {
+  const getChannelDestination = (ch: 'email' | 'sms' | 'authenticator') => {
+    if (ch === 'email') return currentUser.email || 'user@medicare.vn';
+    if (ch === 'sms') return currentUser.pii?.phone || '0909 123 456';
+    return `TideCloak Enclave App (@${currentUser.username})`;
+  };
+
+  const getChannelLabel = (ch: 'email' | 'sms' | 'authenticator') => {
+    if (ch === 'email') return 'Email Bảo mật';
+    if (ch === 'sms') return 'Tin nhắn SMS';
+    return 'Ứng dụng Authenticator';
+  };
+
+  const handleRequestCredentialOtp = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCredFeedback(null);
+
+    const cleanNew = newUsername.trim().toLowerCase();
+    const cleanOld = currentUser.username.trim().toLowerCase();
+    const hasUsernameChange = cleanNew !== cleanOld;
+    const hasPasswordChange = newPassword.trim().length > 0;
+
+    if (!cleanNew) {
+      setCredFeedback({ type: 'error', text: 'Tên đăng nhập (Username) không được để trống.' });
+      return;
+    }
+
+    if (!hasUsernameChange && !hasPasswordChange) {
+      setCredFeedback({
+        type: 'error',
+        text: 'Vui lòng nhập Username mới hoặc Mật khẩu mới trước khi yêu cầu gửi mã xác thực OTP.',
+      });
+      return;
+    }
+
+    if (hasUsernameChange && availableUsers[cleanNew]) {
+      setCredFeedback({
+        type: 'error',
+        text: `Username "@${cleanNew}" đã tồn tại trong hệ thống. Vui lòng chọn tên đăng nhập khác.`,
+      });
+      return;
+    }
+
+    const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
+    const destination = getChannelDestination(otpChannel);
+
+    setPendingOtpSession({
+      code: generatedCode,
+      channel: otpChannel,
+      destination,
+      expiresAt: Date.now() + 120 * 1000,
+      targetUsername: cleanNew,
+      targetPassword: newPassword.trim(),
+    });
+    setOtpInput('');
+  };
+
+  const handleVerifyOtpAndSaveCredentials = (e: React.FormEvent) => {
     e.preventDefault();
-    const res = updateCredentialsSelfService(newUsername, newPassword);
+    if (!pendingOtpSession) return;
+
+    if (Date.now() > pendingOtpSession.expiresAt || otpRemainingSec <= 0) {
+      setCredFeedback({
+        type: 'error',
+        text: 'Mã xác thực OTP đã hết hạn (quá 120 giây). Vui lòng bấm "Gửi lại mã mới".',
+      });
+      return;
+    }
+
+    if (otpInput.trim() !== pendingOtpSession.code) {
+      setCredFeedback({
+        type: 'error',
+        text: 'Mã xác thực OTP không chính xác! Vui lòng kiểm tra mã 6 chữ số trong hộp thư giả lập bên dưới.',
+      });
+      return;
+    }
+
+    const res = updateCredentialsSelfService(
+      pendingOtpSession.targetUsername,
+      pendingOtpSession.targetPassword
+    );
     if (res.success) {
-      setCredFeedback({ type: 'success', text: res.message });
+      const channelName = getChannelLabel(pendingOtpSession.channel);
+      setCredFeedback({
+        type: 'success',
+        text: `[Xác thực OTP qua ${channelName} thành công] ${res.message}`,
+      });
       setNewPassword('');
+      setPendingOtpSession(null);
+      setOtpInput('');
     } else {
       setCredFeedback({ type: 'error', text: res.message });
     }
@@ -547,71 +665,246 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* SECTION 2: Self-Service Username & Password Change */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            {/* SECTION 2: Self-Service Username & Password Change with Simulated OTP Verification */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <KeyRound className="w-5 h-5 text-[#087F8C]" />
                     <h2 className="text-lg font-bold text-slate-900">
-                      2. Đổi Username & Mật khẩu (Tự phục vụ — Hiệu lực ngay)
+                      2. Đổi Username & Mật khẩu (Xác thực OTP — Miễn Quorum)
                     </h2>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Ngoại lệ duy nhất không cần chờ Hội đồng Quorum phê duyệt.
+                    Không cần Hội đồng Quorum phê duyệt nhưng bắt buộc xác thực qua mã OTP gửi về Email, SMS hoặc Ứng dụng Xác thực.
                   </p>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#E8F5F2] text-[#087F8C]">
-                  Miễn Quorum
+                <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-[#E8F5F2] text-[#087F8C] border border-[#087F8C]/20 whitespace-nowrap self-start sm:self-center">
+                  Bảo vệ 2 lớp (2FA / OTP)
                 </span>
               </div>
 
               {credFeedback && (
                 <div
-                  className={`mb-4 p-3.5 rounded-xl border text-xs ${
+                  className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
                     credFeedback.type === 'success'
                       ? 'bg-[#E8F5F2] border-[#087F8C]/30 text-slate-800'
                       : 'bg-rose-50 border-rose-200 text-rose-800'
                   }`}
                 >
-                  {credFeedback.text}
+                  {credFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-[#087F8C] shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  )}
+                  <span className="font-medium leading-relaxed">{credFeedback.text}</span>
                 </div>
               )}
 
-              <form onSubmit={handleSelfServiceCredentials} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* STEP 1: Enter New Credentials & Select OTP Channel */}
+              <form onSubmit={handleRequestCredentialOtp} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Tên đăng nhập (Username)
+                    </label>
+                    <input
+                      type="text"
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      disabled={Boolean(pendingOtpSession)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 font-mono disabled:opacity-60"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Mật khẩu PRISM mới (Để trống nếu giữ nguyên)
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      disabled={Boolean(pendingOtpSession)}
+                      placeholder="Nhập mật khẩu mới..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 disabled:opacity-60"
+                    />
+                  </div>
+                </div>
+
+                {/* OTP Delivery Channel Picker */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Tên đăng nhập (Username)
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">
+                    Chọn phương thức nhận mã xác thực (OTP 6 chữ số):
                   </label>
-                  <input
-                    type="text"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 font-mono"
-                    required
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <button
+                      type="button"
+                      disabled={Boolean(pendingOtpSession)}
+                      onClick={() => setOtpChannel('email')}
+                      className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 cursor-pointer disabled:opacity-60 ${
+                        otpChannel === 'email'
+                          ? 'bg-[#E8F5F2] border-[#087F8C] text-slate-900 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-[#087F8C]/40'
+                      }`}
+                    >
+                      <Mail className="w-4 h-4 text-[#087F8C] shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Gửi qua Email</div>
+                        <div className="text-[11px] text-slate-500 truncate">{currentUser.email}</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={Boolean(pendingOtpSession)}
+                      onClick={() => setOtpChannel('sms')}
+                      className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 cursor-pointer disabled:opacity-60 ${
+                        otpChannel === 'sms'
+                          ? 'bg-[#E8F5F2] border-[#087F8C] text-slate-900 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-[#087F8C]/40'
+                      }`}
+                    >
+                      <Smartphone className="w-4 h-4 text-[#087F8C] shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Gửi qua SMS</div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          {currentUser.pii?.phone || '0909 123 456'}
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={Boolean(pendingOtpSession)}
+                      onClick={() => setOtpChannel('authenticator')}
+                      className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 cursor-pointer disabled:opacity-60 ${
+                        otpChannel === 'authenticator'
+                          ? 'bg-[#E8F5F2] border-[#087F8C] text-slate-900 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-[#087F8C]/40'
+                      }`}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[#087F8C] shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 whitespace-nowrap">TideCloak App</div>
+                        <div className="text-[11px] text-slate-500 truncate">Push OTP Enclave</div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Mật khẩu PRISM mới (Để trống nếu giữ nguyên)
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu mới..."
-                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-900"
-                  />
-                </div>
-                <div className="sm:col-span-2 flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white font-semibold text-xs transition"
-                  >
-                    Cập nhật Username / Mật khẩu Ngay lập tức
-                  </button>
-                </div>
+
+                {!pendingOtpSession && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white font-semibold text-xs flex items-center gap-2 whitespace-nowrap transition cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Gửi Mã Xác Thực OTP ({getChannelLabel(otpChannel)})</span>
+                    </button>
+                  </div>
+                )}
               </form>
+
+              {/* STEP 2: Simulated Incoming OTP Notification + Verification Form */}
+              {pendingOtpSession && (
+                <div className="space-y-4 pt-3 border-t border-slate-200 animate-fade-up">
+                  {/* Simulated Sandbox Notification Box */}
+                  <div className="p-4 rounded-2xl bg-[#E8F5F2]/80 border-2 border-[#087F8C]/40 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#087F8C] text-white flex items-center gap-1 whitespace-nowrap">
+                          <Sparkles className="w-3 h-3" /> Giả lập {getChannelLabel(pendingOtpSession.channel)}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-700">
+                          Đã gửi tới: <strong className="text-[#087F8C]">{pendingOtpSession.destination}</strong>
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-[#087F8C] bg-white px-2.5 py-1 rounded-lg border border-[#087F8C]/20 whitespace-nowrap">
+                        Hiệu lực: {otpRemainingSec}s
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white border border-[#087F8C]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="text-xs text-slate-600 space-y-0.5">
+                        <p className="font-semibold text-slate-900">
+                          [MediCare Security] Mã xác thực đổi thông tin đăng nhập của bạn là:
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Tuyệt đối không chia sẻ mã này cho bất kỳ ai. Mã có hiệu lực trong 120 giây.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="px-3.5 py-2 rounded-xl bg-[#E8F5F2] text-[#087F8C] font-mono text-lg font-black tracking-[0.25em] border border-[#087F8C]/30 select-all">
+                          {pendingOtpSession.code}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOtpInput(pendingOtpSession.code)}
+                          className="px-3 py-2 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer"
+                          title="Tự động điền mã OTP vào ô bên dưới"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Điền nhanh OTP</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OTP Verification Input Form */}
+                  <form onSubmit={handleVerifyOtpAndSaveCredentials} className="space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Nhập mã OTP 6 chữ số để hoàn tất cập nhật
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={otpInput}
+                          onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
+                          placeholder="Nhập 6 chữ số (VD: 482915)..."
+                          className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-base font-mono font-bold tracking-[0.25em] text-slate-900"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex items-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleRequestCredentialOtp()}
+                          className="px-3.5 py-2.5 rounded-xl bg-[#E8F5F2] hover:bg-[#087F8C] text-[#087F8C] hover:text-white border border-[#087F8C]/30 text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Gửi lại mã</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingOtpSession(null);
+                            setOtpInput('');
+                            setCredFeedback(null);
+                          }}
+                          className="px-3.5 py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-600 dark:text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold whitespace-nowrap transition cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+
+                        <button
+                          type="submit"
+                          className="px-5 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white font-bold text-xs flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Xác nhận OTP & Lưu</span>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
 
