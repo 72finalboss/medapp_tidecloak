@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --medical-teal: #087F8C;
+    --medical-teal-dark: #066670;
+    --soft-mint: #E8F5F2;
+    --dark-navy: #0F172A;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #FFFFFF;
+    color: #0F172A;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  html.dark body {
+    background-color: #0B1120;
+    color: #F8FAFC;
+  }
+}
+
+/* Smooth Dark Theme Surface & Typography Adaptation */
+html.dark .bg-white,
+html.dark .bg-white\/80,
+html.dark .bg-white\/90,
+html.dark .bg-white\/95 {
+  background-color: rgba(15, 23, 42, 0.88) !important;
+  backdrop-filter: blur(12px);
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/40,
+html.dark .bg-slate-50\/50,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-100 {
+  background-color: rgba(30, 41, 59, 0.65) !important;
+}
+
+html.dark .bg-\[\#E8F5F2\],
+html.dark .bg-\[\#E8F5F2\]\/35,
+html.dark .bg-\[\#E8F5F2\]\/40,
+html.dark .bg-\[\#E8F5F2\]\/45,
+html.dark .bg-\[\#E8F5F2\]\/50,
+html.dark .bg-\[\#E8F5F2\]\/60 {
+  background-color: rgba(13, 148, 136, 0.18) !important;
+}
+
+html.dark .text-slate-900 {
+  color: #F8FAFC !important;
+}
+
+html.dark .text-slate-800 {
+  color: #E2E8F0 !important;
+}
+
+html.dark .text-slate-700 {
+  color: #CBD5E1 !important;
+}
+
+html.dark .text-slate-600 {
+  color: #94A3B8 !important;
+}
+
+html.dark .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+html.dark .text-\[\#087F8C\] {
+  color: #2DD4BF !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-100 {
+  border-color: rgba(51, 65, 85, 0.75) !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  color: #F8FAFC !important;
+  border-color: rgba(51, 65, 85, 0.85) !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #2DD4BF !important;
+}
+
+/* Simple, Calm Micro-Animations & Transitions */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hover-lift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease,
+              background-color 0.25s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -8px rgba(8, 127, 140, 0.15);
+}
+
+html.dark .hover-lift:hover {
+  box-shadow: 0 12px 30px -8px rgba(45, 212, 191, 0.2);
+}
+
+.glass-surface {
+  background-color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+html.dark .glass-surface {
+  background-color: rgba(11, 17, 32, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
