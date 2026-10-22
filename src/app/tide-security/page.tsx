@@ -11,49 +11,46 @@ import {
   Lock,
   Unlock,
   CheckCircle2,
-  AlertTriangle,
   RefreshCw,
   Cpu,
   Terminal,
   Layers,
   UserCheck,
   ArrowRight,
-  Fingerprint,
-  FileKey,
   XCircle,
 } from "lucide-react";
 
 const TIDE_MCP_ARCHITECTURE_MAP = [
   {
-    module: "1. PRISM Sign-In & Staff Onboarding (/login)",
-    mcpPlaybook: "add-auth-nextjs-fresh • initialize-admin-and-link-account",
-    tideMechanism: "PRISM Threshold Passwordless/Zero-Hash Auth + IGA Draft User Creation",
+    module: "1. Xác thực Đăng nhập & Thẩm định Nhân sự Y tế",
+    badge: "Xác thực Ngưỡng PRISM & Quản trị Danh tính",
+    tideMechanism: "Xác thực không lưu mật khẩu (Zero-Hash) & Phê duyệt Hồ sơ Hành nghề",
     howItFits:
-      "Passwords are verified across distributed ORK nodes without storing password hashes. Patient accounts activate immediately, while non-patient roles (Doctor, Pharmacist, Director) require CCHN medical license evidence and enter an IGA pending state awaiting multi-party Quorum verification.",
+      "Mật khẩu được xác thực phân tán qua mạng lưới nút mật mã mà không lưu trữ bản băm mật khẩu. Tài khoản Bệnh nhân được kích hoạt ngay, trong khi tài khoản Bác sĩ, Dược sĩ và Giám đốc bắt buộc đính kèm Chứng chỉ Hành nghề (CCHN) và chờ Hội đồng thẩm định đa bên kích hoạt.",
     href: "/login",
   },
   {
-    module: "2. PII Governance & 1-Time SPII Vault (/profile)",
-    mcpPlaybook: "setup-forseti-e2ee • configure-e2ee-roles-and-policies",
-    tideMechanism: "Forseti E2EE Decryption Policy + 2FA OTP Self-Service Guard",
+    module: "2. Quản trị Hồ sơ Cá nhân (PII) & Kho Dữ liệu Tối mật (SPII)",
+    badge: "Mã hóa Đầu-Cuối & Bảo vệ Đa lớp (2FA)",
+    tideMechanism: "Kiểm soát Thay đổi Đa bên & Cấp quyền Giải mã SPII 1 Lần Duy Nhất",
     howItFits:
-      "Username/Password updates require multi-channel 2FA OTP verification. Modifying any PII field queues an IGA change request. Sensitive SPII (National ID, Genetics, Biometrics) is E2EE-locked; once Quorum-approved, the exported JSON file can be downloaded once before the grant self-destructs.",
+      "Đổi Username hoặc Mật khẩu yêu cầu mã xác thực OTP 6 chữ số qua Email, SMS hoặc Ứng dụng. Sửa bất kỳ thông tin cá nhân (PII) nào đều phải chờ Hội đồng phê duyệt. Dữ liệu nhạy cảm tối mật (SPII) chỉ được tải về dạng tệp đúng 1 lần duy nhất trước khi khóa truy cập tự hủy.",
     href: "/profile",
   },
   {
-    module: "3. Emergent Authority Quorum Console (/quorum)",
-    mcpPlaybook: "iga-admin-governance • policy-governed-signing",
-    tideMechanism: "M-of-N Role-Distinct Threshold Signatures (Non-Collusion)",
+    module: "3. Hội đồng Thẩm định & Ký duyệt Đa bên (Emergent Authority)",
+    badge: "Đồng thuận Đa Chữ Ký M-of-N",
+    tideMechanism: "Chữ ký Ngưỡng từ Các Vai trò Độc lập (Chống Thông đồng)",
     howItFits:
-      "Every high-risk action (staff credential verification, PII profile edits, 1-time SPII export, controlled opioid prescriptions) requires 2 distinct role shards (e.g. Doctor + Pharmacist or Director) verified against realm-management:tide-realm-admin.",
+      "Mọi tác vụ nhạy cảm (kích hoạt tài khoản nhân sự mới, sửa thông tin cá nhân PII, trích xuất tệp SPII 1 lần, kê đơn thuốc kiểm soát đặc biệt) đều bắt buộc thu thập đủ chữ ký từ tối thiểu 2 vai trò độc lập (ví dụ: Bác sĩ + Dược sĩ hoặc Giám đốc Y khoa).",
     href: "/quorum",
   },
   {
-    module: "4. Inpatient EHR & Server API Guard (/patients & /api/*)",
-    mcpPlaybook: "protect-api-nextjs • verify-jwt-server-side • add-rbac-nextjs",
-    tideMechanism: "Embedded VVK JWKS (ES256) + Sender-Constrained DPoP (cnf.jkt) + RBAC",
+    module: "4. Bảo vệ Hồ sơ Bệnh án Nội trú & Xác thực Phía Máy chủ",
+    badge: "Chữ ký số VVK & Ràng buộc Khóa Thiết bị",
+    tideMechanism: "Kiểm tra Quyền truy cập Thực tế phía Máy chủ theo Từng Vai trò",
     howItFits:
-      "Protected API routes (/api/tide/access-check, /api/quorum/validate-shard) verify JWT signatures locally against the embedded Vendor-Verifiable Key (jwk) in data/tidecloak.json, validate cnf.jkt DPoP binding, and enforce realm/client roles.",
+      "Mọi thao tác truy xuất hoặc cập nhật bệnh án đều được máy chủ xác thực chữ ký số, kiểm tra khóa thiết bị chống đánh cắp phiên làm việc (DPoP) và đối chiếu quyền hạn y khoa trước khi cho phép thực thi.",
     href: "/patients",
   },
 ];
@@ -61,68 +58,76 @@ const TIDE_MCP_ARCHITECTURE_MAP = [
 const RBAC_CAPABILITY_CHECKS = [
   {
     id: "tide_voucher",
-    label: "Tide Voucher Enabled (_tide_enabled)",
-    checkType: "hasRealmRole('_tide_enabled')",
+    label: "Chứng thực Danh tính Mật mã TideCloak",
+    description: "Cho phép sử dụng phiên đăng nhập bảo mật phân tán",
     role: "_tide_enabled",
     isClient: false,
   },
   {
     id: "iga_admin",
-    label: "IGA Quorum Governance (tide-realm-admin)",
-    checkType: "hasClientRole('tide-realm-admin', 'realm-management')",
+    label: "Thành viên Hội đồng Quản trị & Thẩm định",
+    description: "Quyền tham gia xem xét và phê duyệt các yêu cầu tại Hội đồng",
     role: "tide-realm-admin",
     clientId: "realm-management",
     isClient: true,
   },
   {
     id: "ehr_write",
-    label: "Modify Inpatient EHR & Vitals (ehr:write)",
-    checkType: "hasClientRole('ehr:write', 'nexus-lms-client')",
+    label: "Cập nhật Bệnh án & Chỉ số Sinh tồn",
+    description: "Quyền ghi nhận chẩn đoán và cập nhật hồ sơ bệnh nhân nội trú",
     role: "ehr:write",
     clientId: "nexus-lms-client",
     isClient: true,
   },
   {
     id: "rx_propose",
-    label: "Propose Controlled Prescription (prescription:propose)",
-    checkType: "hasClientRole('prescription:propose', 'nexus-lms-client')",
+    label: "Khởi tạo & Kê đơn Thuốc Kiểm soát Đặc biệt",
+    description: "Quyền đề xuất phác đồ điều trị và thuốc cần hội chẩn",
     role: "prescription:propose",
     clientId: "nexus-lms-client",
     isClient: true,
   },
   {
     id: "rx_verify",
-    label: "Pharmacist Clinical Verification (prescription:verify)",
-    checkType: "hasClientRole('prescription:verify', 'nexus-lms-client')",
+    label: "Thẩm định Dược lâm sàng & Tương tác Thuốc",
+    description: "Quyền kiểm duyệt liều lượng và cảnh báo dị ứng thuốc",
     role: "prescription:verify",
     clientId: "nexus-lms-client",
     isClient: true,
   },
   {
     id: "staff_verify",
-    label: "Director Staff License Approval (staff:verify-evidence)",
-    checkType: "hasClientRole('staff:verify-evidence', 'nexus-lms-client')",
+    label: "Phê duyệt Chứng chỉ Hành nghề Nhân sự Mới",
+    description: "Quyền thẩm định hồ sơ CCHN và kích hoạt tài khoản y tế",
     role: "staff:verify-evidence",
     clientId: "nexus-lms-client",
     isClient: true,
   },
   {
     id: "quorum_sign",
-    label: "Sign M-of-N Quorum Shard (quorum:sign)",
-    checkType: "hasClientRole('quorum:sign', 'nexus-lms-client')",
+    label: "Ký duyệt Chữ ký Ngưỡng (M-of-N Quorum)",
+    description: "Quyền đóng góp chữ ký số độc lập vào quyết định chung",
     role: "quorum:sign",
     clientId: "nexus-lms-client",
     isClient: true,
   },
   {
     id: "spii_export",
-    label: "Request 1-Time SPII Export (spii:request-once)",
-    checkType: "hasClientRole('spii:request-once', 'nexus-lms-client')",
+    label: "Yêu cầu Mở khóa & Trích xuất Hồ sơ SPII 1 Lần",
+    description: "Quyền gửi yêu cầu giải mã dữ liệu cá nhân tối mật của chính mình",
     role: "spii:request-once",
     clientId: "nexus-lms-client",
     isClient: true,
   },
 ];
+
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  doctor: "Bác sĩ Điều trị",
+  pharmacist: "Dược sĩ Lâm sàng",
+  director: "Giám đốc Y khoa",
+  patient: "Bệnh nhân",
+  ai_auditor: "Trợ lý Kiểm toán AI",
+};
 
 export default function TideSecurityPage() {
   const {
@@ -139,7 +144,6 @@ export default function TideSecurityPage() {
   const [testResult, setTestResult] = useState<any>(null);
   const [testLoading, setTestLoading] = useState(false);
 
-  // Fetch a live ES256 signed JWT from /api/auth/token matching data/tidecloak.json
   const fetchToken = async () => {
     setLoading(true);
     try {
@@ -157,7 +161,6 @@ export default function TideSecurityPage() {
     fetchToken();
   }, [activeRole]);
 
-  // Run server-side JWT, DPoP, RBAC, and Quorum tests
   const runServerAccessTest = async (
     testType: "ehr_write" | "iga_admin" | "tampered_jwt" | "quorum_collusion"
   ) => {
@@ -192,7 +195,7 @@ export default function TideSecurityPage() {
         });
         const body = await res.json();
         setTestResult({
-          endpoint: "POST /api/quorum/validate-shard",
+          scenarioLabel: "Kiểm tra Chống Thông đồng Chữ ký",
           status: res.status,
           ok: res.ok,
           body,
@@ -204,11 +207,11 @@ export default function TideSecurityPage() {
       const payload =
         testType === "ehr_write"
           ? {
-              resourceName: "Inpatient EHR Clinical Write (/patients/[id])",
+              resourceName: "Cập nhật Hồ sơ Bệnh án Nội trú",
               requiredRoles: ["doctor", "ehr:write"],
             }
           : {
-              resourceName: "IGA Quorum Governance Console (/quorum)",
+              resourceName: "Ký duyệt tại Hội đồng Thẩm định Quorum",
               requiredRoles: ["doctor", "pharmacist", "director", "ai_auditor"],
               requireClientRole: {
                 clientId: "realm-management",
@@ -227,7 +230,10 @@ export default function TideSecurityPage() {
 
       const body = await res.json();
       setTestResult({
-        endpoint: "POST /api/tide/access-check",
+        scenarioLabel:
+          testType === "tampered_jwt"
+            ? "Kiểm tra Phát hiện Chữ ký Token Bị Giả mạo"
+            : payload.resourceName,
         status: res.status,
         ok: res.ok,
         body,
@@ -235,7 +241,7 @@ export default function TideSecurityPage() {
       });
     } catch (err: any) {
       setTestResult({
-        endpoint: "/api/tide/access-check",
+        scenarioLabel: "Kiểm tra Xác thực Máy chủ",
         status: 500,
         ok: false,
         body: { error: err.message },
@@ -256,49 +262,44 @@ export default function TideSecurityPage() {
           <div className="space-y-2 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#087F8C]/20 text-[#087F8C] text-xs font-semibold">
               <Key className="w-3.5 h-3.5" />
-              <span>Tide MCP Architecture Plan • Simulated Sign-In, Roles & Access Checks</span>
+              <span>Kiến trúc Bảo mật TideCloak • Phân quyền & Đồng thuận Đa bên</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-              Trung tâm Kiến trúc TideCloak & Kiểm thử Phân quyền (RBAC / DPoP / VVK)
+              Trung tâm Bảo mật TideCloak & Kiểm thử Quyền truy cập Y tế
             </h1>
             <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-              Được hoạch định theo <strong>Tide MCP</strong> (<code>iga-admin-governance</code>,{" "}
-              <code>add-auth-nextjs-fresh</code>, <code>protect-api-nextjs</code>,{" "}
-              <code>add-rbac-nextjs</code>, <code>setup-forseti-e2ee</code>). Kiểm tra trực tiếp phiên đăng nhập giả lập, quyền hạn theo vai trò (<code>hasRealmRole</code> /{" "}
-              <code>hasClientRole</code>) và xác thực JWT ES256 phía Server bằng khóa nhúng{" "}
-              <code>data/tidecloak.json</code>.
+              Mô phỏng trực tiếp cách <strong>TideCloak</strong> bảo vệ toàn diện hệ thống bệnh viện: từ đăng nhập không lưu mật khẩu, kiểm soát quyền hạn theo từng chức danh y tế, cho tới xác thực chữ ký số đa bên (Emergent Authority Quorum) trước khi cho phép truy xuất dữ liệu nhạy cảm.
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs space-y-1.5 shrink-0">
             <div className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-              TideCloak Adapter Status
+              Trạng thái Bảo mật Hệ thống
             </div>
             <div className="font-bold text-[#087F8C] flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#087F8C] animate-pulse" />
-              <span>data/tidecloak.json (Loaded)</span>
+              <span>Khóa xác thực cục bộ đã kích hoạt</span>
             </div>
-            <div className="text-slate-600 text-[11px] font-mono">
-              VVK Kid: <strong>nexus-lms-vvk-01 (ES256)</strong>
+            <div className="text-slate-600 text-[11px]">
+              Chuẩn mã hóa: <strong>Chữ ký số ES256 & Ràng buộc DPoP</strong>
             </div>
             <div className="text-slate-500 text-[11px]">
-              Active Principal: <strong>@{currentUser?.username}</strong> ({activeRole})
+              Phiên hiện tại: <strong>{currentUser?.name}</strong> (
+              {activeRole ? ROLE_DISPLAY_NAMES[activeRole] || activeRole : ""})
             </div>
           </div>
         </section>
 
-        {/* SECTION 1: Where TideCloak Fits (Planned via Tide MCP) */}
+        {/* SECTION 1: Where TideCloak Fits */}
         <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-[#087F8C]" />
-                <span>1. Quy hoạch Kiến trúc TideCloak trong MediCare (Tide MCP Plan)</span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Ánh xạ từng phân hệ của ứng dụng với các Scenario & Playbook chuẩn từ Tide MCP Server.
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[#087F8C]" />
+              <span>1. Các Lớp Bảo vệ của TideCloak trong Hệ thống Bệnh viện</span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              Vai trò của TideCloak tại từng phân hệ nghiệp vụ từ lúc đăng ký tài khoản đến khi trích xuất hồ sơ tối mật.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -309,8 +310,8 @@ export default function TideSecurityPage() {
               >
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-[#E8F5F2] text-[#087F8C]">
-                      {item.mcpPlaybook}
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#E8F5F2] text-[#087F8C]">
+                      {item.badge}
                     </span>
                   </div>
                   <h3 className="text-base font-bold text-slate-900">{item.module}</h3>
@@ -323,7 +324,7 @@ export default function TideSecurityPage() {
                     href={item.href}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#E8F5F2] hover:bg-[#087F8C] text-[#087F8C] hover:text-white text-xs font-semibold transition whitespace-nowrap"
                   >
-                    <span>Mở phân hệ này</span>
+                    <span>Trải nghiệm phân hệ này</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -332,20 +333,16 @@ export default function TideSecurityPage() {
           </div>
         </section>
 
-        {/* SECTION 2: Interactive Role Switcher & Live Client-Side RBAC Access Checks */}
+        {/* SECTION 2: Interactive Role Switcher & Live Access Matrix */}
         <section className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-[#087F8C]" />
-                <span>
-                  2. Giả lập Đăng nhập & Kiểm tra Quyền truy cập theo Vai trò (useTideCloak RBAC)
-                </span>
+                <span>2. Bảng Kiểm tra Quyền hạn Trực tiếp theo Vai trò Y tế</span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Chuyển đổi nhanh giữa 5 vai trò để kiểm tra kết quả của{" "}
-                <code>hasRealmRole()</code> và <code>hasClientRole()</code> theo chuẩn{" "}
-                <code>add-rbac-nextjs</code>.
+                Chọn một vai trò bên phải để xem ngay các quyền hạn được cấp phát hoặc bị khóa đối với vai trò đó.
               </p>
             </div>
 
@@ -365,7 +362,7 @@ export default function TideSecurityPage() {
                           : "bg-[#E8F5F2] text-[#087F8C] hover:bg-[#087F8C] hover:text-white"
                       }`}
                     >
-                      Vai trò: {r.toUpperCase()}
+                      {ROLE_DISPLAY_NAMES[r]}
                     </button>
                   );
                 }
@@ -391,7 +388,7 @@ export default function TideSecurityPage() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                         allowed
                           ? "bg-[#087F8C] text-white"
                           : "bg-rose-500/15 text-rose-700 border border-rose-500/30"
@@ -399,18 +396,18 @@ export default function TideSecurityPage() {
                     >
                       {allowed ? (
                         <>
-                          <Unlock className="w-3 h-3" /> ALLOWED
+                          <Unlock className="w-3 h-3" /> ĐƯỢC CẤP QUYỀN
                         </>
                       ) : (
                         <>
-                          <Lock className="w-3 h-3" /> DENIED (403)
+                          <Lock className="w-3 h-3" /> TỪ CHỐI TRUY CẬP
                         </>
                       )}
                     </span>
                   </div>
                   <div className="font-bold text-slate-900">{cap.label}</div>
-                  <div className="font-mono text-[10px] text-slate-500 break-all">
-                    {cap.checkType}
+                  <div className="text-[11px] text-slate-500 leading-relaxed">
+                    {cap.description}
                   </div>
                 </div>
               );
@@ -420,7 +417,7 @@ export default function TideSecurityPage() {
 
         {/* SECTION 3: 2-Column Live Token Inspector & Server-Side Access Verification */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left: Synthetic Token & JWKS Inspector */}
+          {/* Left: Synthetic Token & Claims Inspector */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2.5">
@@ -429,10 +426,10 @@ export default function TideSecurityPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    3. Token ES256 & Claims Hiện tại (VVK + DPoP)
+                    3. Thông tin Chứng thực Phiên làm việc Hiện tại
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Ký bằng khóa ES256 khớp với <code>data/tidecloak.json</code>
+                    Thẻ căn cước mật mã (Token) được cấp riêng cho vai trò đang đăng nhập
                   </p>
                 </div>
               </div>
@@ -440,7 +437,7 @@ export default function TideSecurityPage() {
                 onClick={fetchToken}
                 disabled={loading}
                 className="p-2 rounded-xl bg-[#E8F5F2] text-[#087F8C] hover:bg-[#087F8C] hover:text-white transition cursor-pointer"
-                title="Cấp lại Token mới"
+                title="Làm mới chứng thực phiên"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               </button>
@@ -451,27 +448,27 @@ export default function TideSecurityPage() {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                     <span className="text-[10px] text-slate-400 font-semibold uppercase">
-                      Signing Algorithm
+                      Thuật toán Chữ ký số
                     </span>
                     <div className="font-bold text-slate-900">
-                      {tokenData.signingAlgorithm} (P-256 VVK)
+                      {tokenData.signingAlgorithm} (Đường cong Elliptic P-256)
                     </div>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                     <span className="text-[10px] text-slate-400 font-semibold uppercase">
-                      Sender Constraint
+                      Cơ chế Chống Đánh cắp Phiên
                     </span>
                     <div className="font-bold text-[#087F8C]">
-                      {tokenData.tokenType} (cnf.jkt Bound)
+                      Ràng buộc Khóa Thiết bị ({tokenData.tokenType})
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                    <span>Decoded TideCloak ID/Access Token Claims:</span>
-                    <span className="text-[10px] font-mono text-[#087F8C]">
-                      kid: nexus-lms-vvk-01
+                    <span>Chi tiết Chứng nhận Quyền hạn trong Token:</span>
+                    <span className="text-[10px] font-semibold text-[#087F8C]">
+                      Đã xác thực chữ ký VVK
                     </span>
                   </div>
                   <pre className="p-3.5 bg-slate-950 text-teal-300 rounded-xl font-mono text-[11px] overflow-x-auto max-h-52">
@@ -481,7 +478,7 @@ export default function TideSecurityPage() {
               </div>
             ) : (
               <div className="text-center py-8 text-xs text-slate-400">
-                Đang khởi tạo token ES256...
+                Đang khởi tạo chứng thực phiên...
               </div>
             )}
           </div>
@@ -494,17 +491,16 @@ export default function TideSecurityPage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  4. Kiểm thử Xác thực Server-Side (/api/tide/access-check)
+                  4. Mô phỏng Kiểm tra Bảo mật Phía Máy chủ
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Thực thi <code>verifyTideJWT()</code> + <code>hasRole()</code> trên Backend
+                  Kiểm chứng cách máy chủ tự động chặn các truy cập trái phép hoặc giả mạo
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Theo nguyên tắc cốt lõi của Tide MCP (<em>&ldquo;UI gating is NOT authorization&rdquo;</em>), mọi API bên dưới đều xác thực chữ ký JWT bằng khóa nhúng cục bộ trong{" "}
-              <code>data/tidecloak.json</code> và kiểm tra quyền trước khi xử lý:
+              Mọi yêu cầu gửi lên máy chủ đều được kiểm tra chữ ký mật mã và đối chiếu đúng vai trò trước khi thực thi. Hãy bấm thử 4 kịch bản kiểm tra dưới đây:
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -514,7 +510,7 @@ export default function TideSecurityPage() {
                 disabled={testLoading}
                 className="px-3.5 py-2.5 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
               >
-                1. Test Quyền Ghi Bệnh Án (ehr:write)
+                1. Kiểm tra Quyền Ghi Bệnh Án
               </button>
               <button
                 type="button"
@@ -522,7 +518,7 @@ export default function TideSecurityPage() {
                 disabled={testLoading}
                 className="px-3.5 py-2.5 rounded-xl bg-[#E8F5F2] hover:bg-[#087F8C] text-[#087F8C] hover:text-white border border-[#087F8C]/30 text-xs font-semibold transition cursor-pointer whitespace-nowrap"
               >
-                2. Test Quyền IGA Quorum (tide-realm-admin)
+                2. Kiểm tra Quyền Ký Duyệt Hội Đồng
               </button>
               <button
                 type="button"
@@ -530,7 +526,7 @@ export default function TideSecurityPage() {
                 disabled={testLoading}
                 className="px-3.5 py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-500/30 text-xs font-semibold transition cursor-pointer whitespace-nowrap"
               >
-                3. Test Token Bị Giả Mạo Chữ Ký (401)
+                3. Thử Gửi Token Bị Sửa Đổi Trái Phép
               </button>
               <button
                 type="button"
@@ -538,7 +534,7 @@ export default function TideSecurityPage() {
                 disabled={testLoading}
                 className="px-3.5 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-600 text-amber-800 hover:text-white border border-amber-500/30 text-xs font-semibold transition cursor-pointer whitespace-nowrap"
               >
-                4. Test Chống Thông Đồng Quorum (400)
+                4. Thử Tự Ký Duyệt 2 Lần Cùng Vai Trò
               </button>
             </div>
 
@@ -550,7 +546,7 @@ export default function TideSecurityPage() {
                     : "bg-rose-50 border-rose-200 text-rose-900"
                 }`}
               >
-                <div className="flex items-center justify-between font-bold">
+                <div className="flex items-center justify-between font-bold gap-2 flex-wrap">
                   <span className="flex items-center gap-1.5">
                     {testResult.ok ? (
                       <CheckCircle2 className="w-4 h-4 text-[#087F8C]" />
@@ -558,12 +554,12 @@ export default function TideSecurityPage() {
                       <XCircle className="w-4 h-4 text-rose-600" />
                     )}
                     <span>
-                      HTTP {testResult.status} —{" "}
-                      {testResult.ok ? "ACCESS GRANTED" : "REJECTED BY TIDE GUARD"}
+                      Mã phản hồi {testResult.status} —{" "}
+                      {testResult.ok ? "ĐƯỢC PHÉP THỰC THI" : "BỊ CHẶN BỞI HỆ THỐNG BẢO MẬT"}
                     </span>
                   </span>
-                  <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200">
-                    {testResult.endpoint}
+                  <span className="text-[10px] font-semibold bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                    {testResult.scenarioLabel}
                   </span>
                 </div>
 

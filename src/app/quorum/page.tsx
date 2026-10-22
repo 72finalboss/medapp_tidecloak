@@ -91,16 +91,15 @@ export default function ClinicalQuorumPage() {
               <Lock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 sm:mt-0" />
             )}
             <div>
-              <strong>TideCloak IGA Access Check:</strong>{' '}
+              <strong>Kiểm tra Phân quyền TideCloak:</strong>{' '}
               {canSignQuorum ? (
                 <span>
-                  Đã xác thực quyền <code>hasClientRole(&apos;tide-realm-admin&apos;, &apos;realm-management&apos;)</code> và{' '}
-                  <code>quorum:sign</code> cho vai trò <strong>[{activeRole}]</strong>.
+                  Đã xác thực quyền <strong>Thành viên Hội đồng Thẩm định & Ký duyệt</strong> cho vai trò{' '}
+                  <strong className="capitalize">[{activeRole}]</strong>.
                 </span>
               ) : (
                 <span>
-                  403 Forbidden — Vai trò hiện tại <strong>[{activeRole}]</strong> không có quyền{' '}
-                  <code>realm-management:tide-realm-admin</code> để ký duyệt Hội đồng Quorum (chỉ được phép xem).
+                  Từ chối quyền ký duyệt — Vai trò hiện tại <strong className="capitalize">[{activeRole}]</strong> chỉ có quyền theo dõi, không có quyền ký phê duyệt tại Hội đồng Quorum.
                 </span>
               )}
             </div>
@@ -334,7 +333,7 @@ export default function ClinicalQuorumPage() {
                         {!canSignQuorum ? (
                           <span className="text-xs font-semibold text-rose-600 flex items-center space-x-1">
                             <Lock className="w-4 h-4" />
-                            <span>Bị chặn bởi TideCloak RBAC (Thiếu quyền tide-realm-admin)</span>
+                            <span>Bị khóa quyền ký (Vai trò hiện tại không thuộc Hội đồng)</span>
                           </span>
                         ) : alreadySignedByMe ? (
                           <span className="text-xs font-semibold text-slate-500 flex items-center space-x-1">

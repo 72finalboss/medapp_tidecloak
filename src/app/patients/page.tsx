@@ -79,19 +79,18 @@ export default function PatientsDirectoryPage() {
               <Lock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 sm:mt-0" />
             )}
             <div>
-              <strong>TideCloak EHR Access Check:</strong>{' '}
+              <strong>Kiểm tra Phân quyền Bệnh án Điện tử:</strong>{' '}
               {canReadEHR ? (
                 <span>
-                  Vai trò hiện tại <strong>[{activeRole}]</strong> có quyền{' '}
-                  <code>ehr:read</code>{' '}
+                  Vai trò hiện tại <strong className="capitalize">[{activeRole}]</strong> đã được cấp quyền{' '}
+                  <strong>Tra cứu Hồ sơ Bệnh án</strong>{' '}
                   {canWriteEHR
-                    ? 'và ehr:write / prescription:propose (Toàn quyền Lâm sàng).'
-                    : '(Chỉ đọc & đối chiếu chuyên môn — không có quyền tự ý sửa bệnh án).'}
+                    ? 'và Cập nhật Y lệnh / Kê đơn Lâm sàng.'
+                    : '(Chế độ xem và đối chiếu chuyên môn — không tự ý chỉnh sửa bệnh án).'}
                 </span>
               ) : (
                 <span>
-                  403 Restricted — Vai trò <strong>[{activeRole}]</strong> không có quyền{' '}
-                  <code>nexus-lms-client:ehr:read</code> đối với danh sách bệnh nhân nội trú của khoa.
+                  Giới hạn truy cập — Vai trò <strong className="capitalize">[{activeRole}]</strong> không thuộc nhóm nhân sự điều trị nên không có quyền chỉnh sửa danh sách bệnh nhân nội trú.
                 </span>
               )}
             </div>
@@ -103,7 +102,7 @@ export default function PatientsDirectoryPage() {
               onClick={() => quickLogin('doctor')}
               className="px-3.5 py-1.5 rounded-xl bg-[#087F8C] hover:bg-[#066670] text-white font-semibold text-xs whitespace-nowrap shrink-0 cursor-pointer"
             >
-              Chuyển sang Vai trò Bác sĩ (ehr:read)
+              Chuyển sang Vai trò Bác sĩ Điều trị
             </button>
           )}
         </div>
